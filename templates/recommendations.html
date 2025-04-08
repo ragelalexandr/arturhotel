@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Персональные рекомендации{% endblock %}
+
+{% block content %}
+<h2>Рекомендации для гостя</h2>
+{% if rec_rooms %}
+  <ul class="list-group">
+    {% for room in rec_rooms %}
+      <li class="list-group-item">
+        Комната ID: {{ room['id'] }} — Тип: {{ room['type'] }}, Цена: {{ room['price'] }}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Нет рекомендаций на данный момент.</p>
+{% endif %}
+{% endblock %}

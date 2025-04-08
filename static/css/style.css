@@ -1,0 +1,55 @@
+/* Общие настройки */
+html, body {
+  background-color: #ffffff;
+  color: #333333;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Навигация */
+.navbar {
+  border-bottom: 1px solid #eaeaea;
+}
+.navbar-brand {
+  font-size: 1.5rem;
+}
+.nav-link {
+  font-size: 1rem;
+  margin-right: 0.5rem;
+}
+
+/* Основной контейнер */
+.container {
+  max-width: 1200px;
+}
+
+/* Карточки или панели (если используете) */
+.card {
+  border: none;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  background-color: #ffffff;
+  margin-bottom: 1.5rem;
+}
+
+/* Заголовки */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 300;
+  color: #222222;
+  margin-bottom: 1rem;
+}
+
+/* Формы */
+.form-control {
+  border-radius: 0.25rem;
+}
+
+/* Кнопки – минималистичный вид */
+.btn {
+  border-radius: 0.25rem;
+  padding: 0.5rem 1.25rem;
+}
+
+/* Подвал */
+footer {
+  border-top: 1px solid #eaeaea;
+}

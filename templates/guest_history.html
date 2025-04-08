@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}История бронирований{% endblock %}
+
+{% block content %}
+<h2>История бронирований гостя</h2>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID бронирования</th>
+      <th>ID комнаты</th>
+      <th>Дата заезда</th>
+      <th>Дата выезда</th>
+      <th>Статус</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for booking in history %}
+    <tr>
+      <td>{{ booking['id'] }}</td>
+      <td>{{ booking['room_id'] }}</td>
+      <td>{{ booking['start_date'] }}</td>
+      <td>{{ booking['end_date'] }}</td>
+      <td>{{ booking['status'] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

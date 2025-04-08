@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Бронирования{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Список бронирований</h2>
+  <a class="btn btn-success" href="{{ url_for('add_booking') }}">Создать бронирование</a>
+</div>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>ID гостя</th>
+      <th>ID комнаты</th>
+      <th>Дата заезда</th>
+      <th>Дата выезда</th>
+      <th>Статус</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for booking in bookings %}
+    <tr>
+      <td>{{ booking['id'] }}</td>
+      <td>{{ booking['guest_id'] }}</td>
+      <td>{{ booking['room_id'] }}</td>
+      <td>{{ booking['start_date'] }}</td>
+      <td>{{ booking['end_date'] }}</td>
+      <td>{{ booking['status'] }}</td>
+      <td>
+        {% if booking['status'] == 'active' %}
+          <a class="btn btn-danger btn-sm" href="{{ url_for('cancel_booking', booking_id=booking['id']) }}" onclick="return confirm('Отменить бронирование?');">Отменить</a>
+        {% else %}
+          &mdash;
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

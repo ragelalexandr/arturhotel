@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Гости{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Список гостей</h2>
+  <a class="btn btn-success" href="{{ url_for('register_guest') }}">Зарегистрировать гостя</a>
+</div>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Имя</th>
+      <th>Контакт</th>
+      <th>Предпочтения</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for guest in guests %}
+    <tr>
+      <td>{{ guest['id'] }}</td>
+      <td>{{ guest['name'] }}</td>
+      <td>{{ guest['contact'] }}</td>
+      <td>{{ guest['preferences'] }}</td>
+      <td>
+        <a class="btn btn-info btn-sm" href="{{ url_for('guest_history', guest_id=guest['id']) }}">История бронирований</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

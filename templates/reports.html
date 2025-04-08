@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Отчеты{% endblock %}
+
+{% block content %}
+<h2>Отчеты по бронированиям</h2>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID комнаты</th>
+      <th>Количество активных бронирований</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for stat in stats %}
+    <tr>
+      <td>{{ stat['room_id'] }}</td>
+      <td>{{ stat['count'] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

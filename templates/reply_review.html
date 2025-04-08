@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Ответ на отзыв{% endblock %}
+
+{% block content %}
+<h2>Ответить на отзыв</h2>
+<div class="mb-3">
+  <p><strong>Отзыв:</strong> {{ review['review'] }} (Оценка: {{ review['rating'] }})</p>
+</div>
+<form action="{{ url_for('reply_review', review_id=review['id']) }}" method="post">
+  <div class="mb-3">
+    <label for="admin_reply" class="form-label">Ответ администратора</label>
+    <textarea class="form-control" id="admin_reply" name="admin_reply" required></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Отправить ответ</button>
+</form>
+{% endblock %}

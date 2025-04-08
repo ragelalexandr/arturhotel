@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить комнату{% endblock %}
+
+{% block content %}
+<h2>Добавить новую комнату</h2>
+<form action="{{ url_for('add_room') }}" method="post" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label for="type" class="form-label">Тип комнаты</label>
+    <input type="text" class="form-control" id="type" name="type" required>
+  </div>
+  <div class="mb-3">
+    <label for="capacity" class="form-label">Вместимость</label>
+    <input type="number" class="form-control" id="capacity" name="capacity" required>
+  </div>
+  <div class="mb-3">
+    <label for="amenities" class="form-label">Удобства</label>
+    <textarea class="form-control" id="amenities" name="amenities"></textarea>
+  </div>
+  <div class="mb-3">
+    <label for="price" class="form-label">Цена</label>
+    <input type="number" step="0.01" class="form-control" id="price" name="price" required>
+  </div>
+  <div class="mb-3">
+    <label for="photo" class="form-label">Фото комнаты</label>
+    <input type="file" class="form-control" id="photo" name="photo">
+  </div>
+  <button type="submit" class="btn btn-success">Добавить комнату</button>
+</form>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Отзывы{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Отзывы</h2>
+  <a class="btn btn-success" href="{{ url_for('add_review') }}">Добавить отзыв</a>
+</div>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>ID гостя</th>
+      <th>Отзыв</th>
+      <th>Оценка</th>
+      <th>Ответ администратора</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for review in reviews %}
+    <tr>
+      <td>{{ review['id'] }}</td>
+      <td>{{ review['guest_id'] }}</td>
+      <td>{{ review['review'] }}</td>
+      <td>{{ review['rating'] }}</td>
+      <td>{{ review['admin_reply'] }}</td>
+      <td>
+        {% if not review['moderated'] %}
+          <a class="btn btn-primary btn-sm" href="{{ url_for('reply_review', review_id=review['id']) }}">Ответить</a>
+        {% else %}
+          Отредактировано
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

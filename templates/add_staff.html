@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить сотрудника{% endblock %}
+
+{% block content %}
+<h2>Добавить сотрудника</h2>
+<form action="{{ url_for('add_staff') }}" method="post">
+  <div class="mb-3">
+    <label for="name" class="form-label">Имя</label>
+    <input type="text" class="form-control" id="name" name="name" required>
+  </div>
+  <div class="mb-3">
+    <label for="role" class="form-label">Роль</label>
+    <input type="text" class="form-control" id="role" name="role" required>
+  </div>
+  <div class="mb-3">
+    <label for="tasks" class="form-label">Задачи</label>
+    <textarea class="form-control" id="tasks" name="tasks"></textarea>
+  </div>
+  <button type="submit" class="btn btn-success">Добавить сотрудника</button>
+</form>
+{% endblock %}
