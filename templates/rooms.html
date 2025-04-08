@@ -7,39 +7,66 @@
   <h2>Список комнат</h2>
   <a class="btn btn-success" href="{{ url_for('add_room') }}">Добавить комнату</a>
 </div>
-<table class="table table-striped">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Тип</th>
-      <th>Вместимость</th>
-      <th>Удобства</th>
-      <th>Цена</th>
-      <th>Фото</th>
-      <th>Действия</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for room in rooms %}
-    <tr>
-      <td>{{ room['id'] }}</td>
-      <td>{{ room['type'] }}</td>
-      <td>{{ room['capacity'] }}</td>
-      <td>{{ room['amenities'] }}</td>
-      <td>{{ room['price'] }}</td>
-      <td>
-        {% if room['photo'] %}
-          <img src="{{ url_for('static', filename=room['photo'].replace('static/', '')) }}" alt="Фото комнаты" width="100">
-        {% else %}
-          Нет фото
-        {% endif %}
-      </td>
-      <td>
-        <a class="btn btn-primary btn-sm" href="{{ url_for('edit_room', room_id=room['id']) }}">Редактировать</a>
-        <a class="btn btn-danger btn-sm" href="{{ url_for('delete_room', room_id=room['id']) }}" onclick="return confirm('Вы уверены, что хотите удалить эту комнату?');">Удалить</a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+
+<!-- Форма для фильтрации -->
+<form method="GET" action="{{ url_for('list_rooms') }}" class="mb-4">
+  <div class="row">
+    <div class="col-md-4">
+      <label for="type" class="form-label">Категория</label>
+      <select name="type" id="type" class="form-select">
+        <option value="all" {% if (not request.args.get('type')) or request.args.get('type') == "all" %}selected{% endif %}>Все категории</option>
+        <option value="Стандарт" {% if request.args.get('type') == "Стандарт" %}selected{% endif %}>Стандарт</option>
+        <option value="Люкс" {% if request.args.get('type') == "Люкс" %}selected{% endif %}>Люкс</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label for="available" class="form-label">Доступность</label>
+      <select name="available" id="available" class="form-select">
+        <option value="" {% if not request.args.get('available') %}selected{% endif %}>Все</option>
+        <option value="1" {% if request.args.get('available') == "1" %}selected{% endif %}>Доступны</option>
+        <option value="0" {% if request.args.get('available') == "0" %}selected{% endif %}>Не доступны</option>
+      </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary w-100">Применить фильтр</button>
+    </div>
+  </div>
+</form>
+
+<!-- Список комнат -->
+<div class="row">
+  {% for room in rooms %}
+  <div class="col-md-4 mb-4">
+    <div class="card h-100">
+      {% if room['photo'] %}
+      <img src="{{ url_for('static', filename=room['photo']) }}" class="card-img-top" alt="Фото комнаты">
+      {% else %}
+      <img src="{{ url_for('static', filename='images/no_image_available.png') }}" class="card-img-top" alt="Нет фото">
+      {% endif %}
+      <div class="card-body d-flex flex-column">
+        <h5 class="card-title">{{ room['type'] }}</h5>
+        <p class="card-text">Вместимость: {{ room['capacity'] }}</p>
+        <p class="card-text">Удобства: {{ room['amenities'] }}</p>
+        <p class="card-text">Цена: {{ room['price'] }} руб.</p>
+        <p class="card-text">
+          {% if room['available'] %}
+            <span class="badge bg-success">Доступна</span>
+          {% else %}
+            <span class="badge bg-danger">Не доступна</span>
+          {% endif %}
+        </p>
+        <!-- Блок кнопок редактирования и удаления -->
+        <div class="mt-auto d-flex justify-content-between">
+          <a href="{{ url_for('edit_room', room_id=room['id']) }}" class="btn btn-sm btn-primary">Редактировать</a>
+          <form action="{{ url_for('delete_room', room_id=room['id']) }}" method="post" onsubmit="return confirm('Вы уверены, что хотите удалить эту комнату?');">
+            <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+    <p>Нет комнат, удовлетворяющих условиям фильтра.</p>
+  {% endfor %}
+</div>
 {% endblock %}

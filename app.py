@@ -4,6 +4,7 @@ import sqlite3
 from datetime import datetime
 from flask import Flask, request, render_template, redirect, url_for, flash
 
+
 app = Flask(__name__)
 
 app.url_map.strict_slashes = False
@@ -19,7 +20,6 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row  # позволит обращаться по именам столбцов
     return conn
 
-# Инициализация базы данных: создаём таблицы для всех модулей
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -28,12 +28,12 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS rooms (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            type TEXT NOT NULL,
-            capacity INTEGER,
-            amenities TEXT,
-            price REAL,
-            photo TEXT,           -- путь к файлу фотографии
-            available INTEGER DEFAULT 1
+            type TEXT NOT NULL,         -- Категория номера (например, "Стандарт", "Люкс")
+            capacity INTEGER,           -- Вместимость номера
+            amenities TEXT,             -- Удобства номера (Wi-Fi, кондиционер и т.д.)
+            price REAL,                 -- Цена за номер
+            photo TEXT,                 -- Путь к файлу фотографии номера (например, uploads/room1.jpg)
+            available INTEGER DEFAULT 1 -- Значение 1 означает, что номер доступен, 0 – недоступен
         )
     ''')
     
@@ -41,11 +41,11 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_id INTEGER,
+            guest_id INTEGER,          
             room_id INTEGER,
-            start_date TEXT,
-            end_date TEXT,
-            status TEXT DEFAULT 'active',  -- active, cancelled, completed
+            start_date TEXT,            -- Дата заезда
+            end_date TEXT,              -- Дата выезда
+            status TEXT DEFAULT 'active',  -- Статус бронирования: active, cancelled, completed
             FOREIGN KEY (room_id) REFERENCES rooms(id)
         )
     ''')
@@ -54,9 +54,9 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS guests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            contact TEXT,
-            preferences TEXT
+            name TEXT NOT NULL,        -- Имя гостя
+            contact TEXT,              -- Контактная информация (телефон, email и т.д.)
+            preferences TEXT           -- Предпочтения гостя (например, тип номера, удобства)
         )
     ''')
     
@@ -65,10 +65,10 @@ def init_db():
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             guest_id INTEGER,
-            review TEXT,
-            rating INTEGER,
-            admin_reply TEXT,
-            moderated INTEGER DEFAULT 0,
+            review TEXT,               -- Текст отзыва
+            rating INTEGER,            -- Оценка гостя (например, от 1 до 5)
+            admin_reply TEXT,          -- Ответ администратора
+            moderated INTEGER DEFAULT 0,  -- Флаг модерации (0 - не модераторован, 1 - модераторован)
             FOREIGN KEY (guest_id) REFERENCES guests(id)
         )
     ''')
@@ -77,9 +77,9 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS staff (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            role TEXT,
-            tasks TEXT
+            name TEXT NOT NULL,        -- Имя сотрудника
+            role TEXT,                 -- Роль или должность (например, администратор, горничная)
+            tasks TEXT                 -- Задачи или список обязанностей
         )
     ''')
     
@@ -88,69 +88,111 @@ def init_db():
 
 # ======================== 1. Управление номерами ========================
 
-@app.route('/rooms')
+@app.route('/rooms', methods=["GET"])
 def list_rooms():
     conn = get_db_connection()
-    rooms = conn.execute('SELECT * FROM rooms').fetchall()
+    query = "SELECT * FROM rooms WHERE 1=1"
+    params = []
+
+    # Фильтр по типу (категории)
+    room_type = request.args.get('type')
+    if room_type and room_type.lower() != "all":
+        query += " AND type = ?"
+        params.append(room_type)
+
+    # Фильтр по доступности: если передано значение "1" или "0"
+    available = request.args.get('available')
+    if available in ['0', '1']:
+        query += " AND available = ?"
+        params.append(available)
+
+    rooms = conn.execute(query, params).fetchall()
     conn.close()
     return render_template('rooms.html', rooms=rooms)
+
 
 @app.route('/rooms/add', methods=['GET', 'POST'])
 def add_room():
     if request.method == 'POST':
         room_type = request.form['type']
-        capacity = request.form['capacity']
-        amenities = request.form['amenities']
-        price = request.form['price']
+        capacity = request.form.get('capacity', 0)
+        amenities = request.form.get('amenities', '')
+        price = request.form.get('price', 0.0)
+        # Для доступности можно использовать чекбокс или select; преобразуем в целое:
+        available = 1 if request.form.get('available') == 'on' else 0
+        
         photo = None
-        # Если загружается фотография
         if 'photo' in request.files:
             file = request.files['photo']
             if file.filename != '':
-                photo_dir = os.path.join('static', 'uploads')
+                photo_dir = os.path.join(app.root_path, 'static', 'uploads')
                 os.makedirs(photo_dir, exist_ok=True)
-                photo_path = os.path.join(photo_dir, file.filename)
-                file.save(photo_path)
+                # Здесь можно добавить логику генерации уникального имени файла, например, с помощью uuid
+                photo_path = os.path.join('uploads', file.filename)
+                file.save(os.path.join(app.root_path, 'static', photo_path))
                 photo = photo_path
+        
         conn = get_db_connection()
         conn.execute('''
-            INSERT INTO rooms (type, capacity, amenities, price, photo)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (room_type, capacity, amenities, price, photo))
+            INSERT INTO rooms (type, capacity, amenities, price, photo, available)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (room_type, capacity, amenities, price, photo, available))
         conn.commit()
         conn.close()
-        flash('Комната добавлена!', 'success')
+        flash('Комната успешно добавлена!', 'success')
         return redirect(url_for('list_rooms'))
     return render_template('add_room.html')
+
 
 @app.route('/rooms/edit/<int:room_id>', methods=['GET', 'POST'])
 def edit_room(room_id):
     conn = get_db_connection()
-    room = conn.execute('SELECT * FROM rooms WHERE id = ?', (room_id,)).fetchone()
+    room = conn.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
+    if room is None:
+        flash("Комната не найдена", "danger")
+        return redirect(url_for('list_rooms'))
+    
     if request.method == 'POST':
         room_type = request.form['type']
-        capacity = request.form['capacity']
-        amenities = request.form['amenities']
-        price = request.form['price']
+        capacity = request.form.get('capacity', 0)
+        amenities = request.form.get('amenities', '')
+        price = request.form.get('price', 0.0)
+        # Обработка флажка доступности
+        available = 1 if request.form.get('available') == 'on' else 0
+        
+        # Сохраняем текущее фото, если новое не загружено
+        photo = room['photo']
+        if 'photo' in request.files:
+            file = request.files['photo']
+            if file.filename != '':
+                # Опционально: можно генерировать уникальное имя файла, например, используя uuid
+                photo_dir = os.path.join(app.root_path, 'static', 'uploads')
+                os.makedirs(photo_dir, exist_ok=True)
+                photo_path = os.path.join('uploads', file.filename)
+                file.save(os.path.join(app.root_path, 'static', photo_path))
+                photo = photo_path
+        
         conn.execute('''
             UPDATE rooms
-            SET type = ?, capacity = ?, amenities = ?, price = ?
+            SET type = ?, capacity = ?, amenities = ?, price = ?, photo = ?, available = ?
             WHERE id = ?
-        ''', (room_type, capacity, amenities, price, room_id))
+        ''', (room_type, capacity, amenities, price, photo, available, room_id))
         conn.commit()
         conn.close()
-        flash('Комната обновлена!', 'success')
+        flash('Данные комнаты обновлены!', 'success')
         return redirect(url_for('list_rooms'))
+    
     conn.close()
     return render_template('edit_room.html', room=room)
 
-@app.route('/rooms/delete/<int:room_id>')
+@app.route('/rooms/delete/<int:room_id>', methods=['POST'])
 def delete_room(room_id):
     conn = get_db_connection()
+    # Удаляем комнату из базы данных
     conn.execute('DELETE FROM rooms WHERE id = ?', (room_id,))
     conn.commit()
     conn.close()
-    flash('Комната удалена!', 'info')
+    flash('Комната успешно удалена!', 'success')
     return redirect(url_for('list_rooms'))
 
 # ======================== 2. Бронирование ========================
