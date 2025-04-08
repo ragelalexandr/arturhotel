@@ -1,8 +1,17 @@
-/* Общие настройки */
+/* Общие стили — базовый минималистичный вид */
+
+/* Белый фон и базовая типографика */
 html, body {
   background-color: #ffffff;
   color: #333333;
   font-family: 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Контейнеры */
+.container {
+  max-width: 1200px;
 }
 
 /* Навигация */
@@ -17,18 +26,19 @@ html, body {
   margin-right: 0.5rem;
 }
 
-/* Основной контейнер */
-.container {
-  max-width: 1200px;
-}
-
-/* Карточки или панели (если используете) */
+/* Карточки для отображения информации */
 .card {
+  background-color: #ffffff;
   border: none;
   border-radius: 0.5rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  background-color: #ffffff;
   margin-bottom: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Заголовки */
@@ -43,13 +53,32 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 0.25rem;
 }
 
-/* Кнопки – минималистичный вид */
+/* Кнопки */
 .btn {
   border-radius: 0.25rem;
   padding: 0.5rem 1.25rem;
 }
 
-/* Подвал */
-footer {
-  border-top: 1px solid #eaeaea;
+/* Модальные окна — можно добавить небольшие анимации при открытии/закрытии, если понадобится */
+.modal-content {
+  border-radius: 0.5rem;
+}
+
+/* Отступы и интервалы */
+.my-4 {
+  margin-top: 1.5rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* Мобильная оптимизация: небольшие корректировки для экранов меньше 576px */
+@media (max-width: 576px) {
+  .navbar-brand {
+    font-size: 1.25rem;
+  }
+  .nav-link {
+    font-size: 0.9rem;
+  }
+  .container {
+    padding: 0 15px;
+  }
 }
