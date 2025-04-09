@@ -23,7 +23,7 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     # Таблица для управления номерами
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS rooms (
@@ -33,108 +33,87 @@ def init_db():
             amenities TEXT,             -- Удобства номера (Wi-Fi, кондиционер и т.д.)
             price REAL,                 -- Цена за номер
             photo TEXT,                 -- Путь к файлу фотографии номера (например, uploads/room1.jpg)
-            available INTEGER DEFAULT 1 -- Значение 1 означает, что номер доступен, 0 – недоступен
+            available INTEGER DEFAULT 1 -- Статус доступности номера
         )
     ''')
 
-        # Добавление индекса для ускорения поиска по комнатам
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_room_id ON bookings(room_id)')
-    
     # Таблица бронирований
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             guest_id INTEGER NOT NULL,      -- Связь с таблицей гостей
             room_id INTEGER NOT NULL,       -- Связь с таблицей комнат
-            start_date DATE NOT NULL,       -- Дата заезда (смена типа на DATE)
-            end_date DATE NOT NULL,         -- Дата выезда (смена типа на DATE)
+            start_date DATE NOT NULL,       -- Дата заезда
+            end_date DATE NOT NULL,         -- Дата выезда
             status TEXT DEFAULT 'active',   -- Статус бронирования: active, cancelled, completed
-            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE, -- Укрепление связи с таблицей гостей
-            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL   -- Укрепление связи с таблицей комнат
+            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
+            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL
         )
     ''')
 
-        # Таблица учета гостей
+    # Таблица гостей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS guests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,              -- Имя гостя (обязательно)
+            name TEXT NOT NULL,              -- Имя гостя
             contact TEXT,                    -- Контактная информация
             preferences TEXT,                -- Личные пожелания гостя
             history TEXT                     -- История посещений (например, JSON)
         )
     ''')
 
-        # Таблица истории гостей (опционально, нормализация данных истории)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS guest_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_id INTEGER NOT NULL,       -- Связь с таблицей гостей
-            booking_id INTEGER NOT NULL,     -- Связь с таблицей бронирований
-            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
-            FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
-        )
-    ''')
-
-        # Добавление индекса для ускорения поиска по гостям
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_guest_id ON bookings(guest_id)')
-
-    # Таблица отзывов (связь с гостями)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS reviews (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_id INTEGER NOT NULL,    -- Связь с таблицей гостей
-            review TEXT,                  -- Текст отзыва
-            rating INTEGER CHECK (rating >= 1 AND rating <= 5),  -- Оценка от 1 до 5
-            admin_reply TEXT,             -- Ответ администратора
-            moderated INTEGER DEFAULT 0,  -- Флаг модерации (0 - не модерирован, 1 - модерирован)
-            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE
-        )
-    ''')
-
-    # Индексация для ускорения поиска по гостям
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_guest_id_reviews ON reviews(guest_id)')
-
-    
     # Таблица отзывов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_id INTEGER NOT NULL,   -- Связь с таблицей гостей
-            review TEXT,                 -- Текст отзыва
+            guest_id INTEGER NOT NULL,       -- Связь с таблицей гостей
+            review TEXT,                     -- Текст отзыва
             rating INTEGER CHECK (rating >= 1 AND rating <= 5),  -- Оценка от 1 до 5
-            admin_reply TEXT,            -- Ответ администратора
-            moderated INTEGER DEFAULT 0, -- Флаг модерации (0 - не модерирован, 1 - модерирован)
+            admin_reply TEXT,                -- Ответ администратора
+            moderated INTEGER DEFAULT 0,     -- Флаг модерации
             FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE
         )
     ''')
 
-    # Индекс для ускорения поиска отзывов по гостям
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_guest_id_reviews ON reviews(guest_id)')
-
-    # Таблица рекомендаций (опциональная, для кеширования предложений)
+    # Таблица рекомендаций для гостей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS recommendations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_id INTEGER NOT NULL,         -- Связь с таблицей гостей
-            room_id INTEGER NOT NULL,          -- Рекомендуемый номер
-            reason TEXT,                       -- Причина рекомендации (например, "часто выбираемый номер")
+            guest_id INTEGER NOT NULL,       -- Связь с таблицей гостей
+            room_id INTEGER NOT NULL,        -- Рекомендуемый номер
+            reason TEXT,                     -- Причина рекомендации
             FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
             FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
         )
     ''')
 
-    
     # Таблица управления персоналом
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS staff (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,        -- Имя сотрудника
-            role TEXT,                 -- Роль или должность (например, администратор, горничная)
-            tasks TEXT                 -- Задачи или список обязанностей
+            name TEXT NOT NULL,              -- Имя сотрудника
+            role TEXT,                       -- Роль или должность
+            tasks TEXT                       -- Задачи или список обязанностей
         )
     ''')
-    
+
+    # Таблица отчетности по задачам сотрудников
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS task_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            staff_id INTEGER NOT NULL,       -- Связь с таблицей сотрудников
+            task TEXT NOT NULL,              -- Описание задачи
+            status TEXT DEFAULT 'pending',   -- Статус задачи: pending, completed
+            completed_at DATETIME,           -- Дата завершения задачи
+            FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # Индексы для ускорения поиска
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_guest_id_reviews ON reviews(guest_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_room_id ON bookings(room_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_guest_id ON bookings(guest_id)')
+
     conn.commit()
     conn.close()
 
@@ -548,6 +527,115 @@ def add_staff():
         flash('Сотрудник добавлен!', 'success')
         return redirect(url_for('list_staff'))
     return render_template('add_staff.html')
+
+@app.route('/staff/edit/<int:staff_id>', methods=['GET', 'POST'])
+def edit_staff(staff_id):
+    conn = get_db_connection()
+    staff = conn.execute('SELECT * FROM staff WHERE id = ?', (staff_id,)).fetchone()
+    if request.method == 'POST':
+        name = request.form['name']
+        role = request.form['role']
+        tasks = request.form['tasks']
+        conn.execute('''
+            UPDATE staff
+            SET name = ?, role = ?, tasks = ?
+            WHERE id = ?
+        ''', (name, role, tasks, staff_id))
+        conn.commit()
+        conn.close()
+        flash('Информация о сотруднике обновлена!', 'success')
+        return redirect(url_for('list_staff'))
+    conn.close()
+    return render_template('edit_staff.html', staff=staff)
+
+@app.route('/staff/delete/<int:staff_id>', methods=['POST'])
+def delete_staff(staff_id):
+    conn = get_db_connection()
+    conn.execute('DELETE FROM staff WHERE id = ?', (staff_id,))
+    conn.commit()
+    conn.close()
+    flash('Сотрудник успешно удалён!', 'info')
+    return redirect(url_for('list_staff'))
+
+# ======================== Задачи для персонала ========================
+
+@app.route('/tasks', methods=['GET', 'POST'])
+def manage_tasks():
+    conn = get_db_connection()
+    
+    if request.method == 'POST':
+        staff_id = request.form['staff_id']
+        task = request.form['task']
+        conn.execute('''
+            INSERT INTO task_reports (staff_id, task, status)
+            VALUES (?, ?, 'pending')
+        ''', (staff_id, task))
+        conn.commit()
+        conn.close()
+        flash('Задача назначена!', 'success')
+        return redirect(url_for('manage_tasks'))
+    
+    tasks = conn.execute('SELECT * FROM task_reports').fetchall()
+    staff = conn.execute('SELECT * FROM staff').fetchall()
+    conn.close()
+    return render_template('tasks.html', tasks=tasks, staff=staff)
+
+@app.route('/tasks/update/<int:task_id>', methods=['POST'])
+def update_task(task_id):
+    conn = get_db_connection()
+    conn.execute('''
+        UPDATE task_reports
+        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (task_id,))
+    conn.commit()
+    conn.close()
+    flash('Задача отмечена как выполненная!', 'success')
+    return redirect(url_for('manage_tasks'))
+
+
+@app.route('/tasks', methods=['GET'])
+def list_tasks():
+    conn = get_db_connection()
+    tasks = conn.execute('''
+        SELECT task_reports.id, staff.name AS staff_name, task_reports.task, task_reports.status, task_reports.completed_at
+        FROM task_reports
+        JOIN staff ON task_reports.staff_id = staff.id
+    ''').fetchall()
+    conn.close()
+    return render_template('tasks.html', tasks=tasks)
+
+@app.route('/tasks/add', methods=['GET', 'POST'])
+def add_task():
+    conn = get_db_connection()
+    if request.method == 'POST':
+        staff_id = request.form['staff_id']
+        task = request.form['task']
+        conn.execute('''
+            INSERT INTO task_reports (staff_id, task, status)
+            VALUES (?, ?, 'pending')
+        ''', (staff_id, task))
+        conn.commit()
+        conn.close()
+        flash('Задача добавлена!', 'success')
+        return redirect(url_for('list_tasks'))
+    
+    staff = conn.execute('SELECT * FROM staff').fetchall()
+    conn.close()
+    return render_template('add_task.html', staff=staff)
+
+@app.route('/tasks/complete/<int:task_id>', methods=['POST'])
+def complete_task(task_id):
+    conn = get_db_connection()
+    conn.execute('''
+        UPDATE task_reports
+        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (task_id,))
+    conn.commit()
+    conn.close()
+    flash('Задача отмечена как выполненная!', 'success')
+    return redirect(url_for('list_tasks'))
 
 # ======================== 7. Отчетность ========================
 

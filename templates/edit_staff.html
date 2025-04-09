@@ -1,0 +1,24 @@
+add_staff.html
+{% extends 'base.html' %}
+
+{% block title %}Редактировать сотрудника{% endblock %}
+
+{% block content %}
+<h2>Редактирование информации о сотруднике</h2>
+<form action="{{ url_for('edit_staff', staff_id=staff['id']) }}" method="post">
+    <div class="mb-3">
+        <label for="name" class="form-label">Имя</label>
+        <input type="text" class="form-control" id="name" name="name" value="{{ staff['name'] }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="role" class="form-label">Роль</label>
+        <input type="text" class="form-control" id="role" name="role" value="{{ staff['role'] }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="tasks" class="form-label">Задачи</label>
+        <textarea class="form-control" id="tasks" name="tasks" rows="3">{{ staff['tasks'] }}</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+    <a href="{{ url_for('list_staff') }}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}

@@ -1,0 +1,24 @@
+<!-- add_task.html -->
+{% extends 'base.html' %}
+
+{% block title %}Добавить задачу{% endblock %}
+
+{% block content %}
+<h2>Добавление новой задачи</h2>
+<form action="{{ url_for('add_task') }}" method="post">
+  <div class="mb-3">
+    <label for="staff_id" class="form-label">Сотрудник</label>
+    <select name="staff_id" id="staff_id" class="form-select" required>
+      {% for member in staff %}
+      <option value="{{ member['id'] }}">{{ member['name'] }} ({{ member['role'] }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="task" class="form-label">Описание задачи</label>
+    <textarea name="task" id="task" class="form-control" rows="3" required></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Добавить задачу</button>
+  <a href="{{ url_for('list_tasks') }}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}

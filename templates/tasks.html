@@ -1,0 +1,39 @@
+<!-- tasks.html -->
+{% extends 'base.html' %}
+
+{% block title %}Задачи сотрудников{% endblock %}
+
+{% block content %}
+<h2>Задачи сотрудников</h2>
+<a href="{{ url_for('add_task') }}" class="btn btn-success mb-3">Добавить задачу</a>
+<table class="table table-striped table-hover">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Сотрудник</th>
+      <th>Задача</th>
+      <th>Статус</th>
+      <th>Дата завершения</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for task in tasks %}
+    <tr>
+      <td>{{ task['id'] }}</td>
+      <td>{{ task['staff_name'] }}</td>
+      <td>{{ task['task'] }}</td>
+      <td>{{ task['status'] }}</td>
+      <td>{{ task['completed_at'] or '—' }}</td>
+      <td>
+        {% if task['status'] == 'pending' %}
+        <form action="{{ url_for('complete_task', task_id=task['id']) }}" method="post" style="display:inline;">
+          <button type="submit" class="btn btn-primary btn-sm">Завершить</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
