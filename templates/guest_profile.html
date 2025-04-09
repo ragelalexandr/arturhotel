@@ -1,0 +1,62 @@
+<!-- guest_profile.html -->
+{% extends 'base.html' %}
+
+{% block title %}Профиль гостя{% endblock %}
+
+{% block content %}
+<h2>Профиль гостя: {{ guest['name'] }}</h2>
+<p><strong>Контактная информация:</strong> {{ guest['contact'] }}</p>
+<p><strong>Пожелания:</strong> {{ guest['preferences'] or 'Не указаны' }}</p>
+
+<h3>История бронирований</h3>
+{% if bookings %}
+  <table class="table table-striped table-hover">
+    <thead>
+      <tr>
+        <th>Категория номера</th>
+        <th>Дата заезда</th>
+        <th>Дата выезда</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for booking in bookings %}
+      <tr>
+        <td>{{ booking['type'] }}</td>
+        <td>{{ booking['start_date'] }}</td>
+        <td>{{ booking['end_date'] }}</td>
+        <td>{{ booking['status'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="text-muted">История бронирований отсутствует.</p>
+{% endif %}
+
+<h3>Отзывы</h3>
+{% if reviews %}
+  <table class="table table-striped table-hover">
+    <thead>
+      <tr>
+        <th>Отзыв</th>
+        <th>Оценка</th>
+        <th>Ответ администратора</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for review in reviews %}
+      <tr>
+        <td>{{ review['review'] }}</td>
+        <td>{{ review['rating'] }}</td>
+        <td>{{ review['admin_reply'] or 'Нет ответа' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="text-muted">Отзывы отсутствуют.</p>
+{% endif %}
+
+<a href="{{ url_for('list_guests') }}" class="btn btn-secondary">Назад к списку гостей</a>
+{% endblock %}

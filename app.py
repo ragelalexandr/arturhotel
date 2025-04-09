@@ -54,9 +54,23 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS guests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,        -- Имя гостя
-            contact TEXT,              -- Контактная информация (телефон, email и т.д.)
-            preferences TEXT           -- Предпочтения гостя (например, тип номера, удобства)
+            name TEXT NOT NULL,
+            contact TEXT,
+            preferences TEXT,            -- Личные пожелания гостя
+            history TEXT                 -- История посещений (например, JSON)
+        )
+    ''')
+
+    # Таблица отзывов (связь с гостями)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guest_id INTEGER,
+            review TEXT,
+            rating INTEGER,
+            admin_reply TEXT,
+            moderated INTEGER DEFAULT 0,
+            FOREIGN KEY (guest_id) REFERENCES guests(id)
         )
     ''')
     
@@ -220,31 +234,43 @@ def list_bookings():
 @app.route('/bookings/add', methods=['GET', 'POST'])
 def add_booking():
     conn = get_db_connection()
-    # Выбираем доступные комнаты для бронирования
-    rooms = conn.execute('SELECT * FROM rooms WHERE available = 1').fetchall()
-    guests = conn.execute('SELECT * FROM guests').fetchall()
-    conn.close()
+    
     if request.method == 'POST':
-        guest_id = request.form['guest_id']
+        # Получаем данные из формы
         room_id = request.form['room_id']
-        start_date = request.form['start_date']  # формат YYYY-MM-DD
-        end_date = request.form['end_date']
-        
-        if not check_availability(room_id, start_date, end_date):
-            flash('Комната недоступна на выбранные даты!', 'danger')
+        guest_id = request.form.get('guest_id')  # предполагается, что ID гостя передаётся корректно
+        start_date = request.form['start_date']   # формат: YYYY-MM-DD
+        end_date = request.form['end_date']       # формат: YYYY-MM-DD
+
+        # Проверка пересечения дат бронирования для выбранной комнаты
+        conflict = conn.execute('''
+            SELECT * FROM bookings
+            WHERE room_id = ?
+              AND status = 'active'
+              AND (? < end_date AND ? > start_date)
+        ''', (room_id, start_date, end_date)).fetchone()
+
+        if conflict:
+            flash("На выбранные даты номер уже забронирован. Пожалуйста, выберите другие даты.", "danger")
+            conn.close()
             return redirect(url_for('add_booking'))
         
-        conn = get_db_connection()
+        # Если пересечений нет, создаём бронирование
         conn.execute('''
-            INSERT INTO bookings (guest_id, room_id, start_date, end_date)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO bookings (guest_id, room_id, start_date, end_date, status)
+            VALUES (?, ?, ?, ?, 'active')
         ''', (guest_id, room_id, start_date, end_date))
         conn.commit()
         conn.close()
-        flash('Бронирование создано!', 'success')
+        flash('Бронирование успешно создано!', 'success')
         return redirect(url_for('list_bookings'))
-        
-    return render_template('add_booking.html', rooms=rooms, guests=guests)
+    
+    # GET-запрос: выбираем список доступных комнат
+    rooms = conn.execute("SELECT * FROM rooms WHERE available = 1").fetchall()
+    conn.close()
+    return render_template('add_booking.html', rooms=rooms)
+
+
 
 @app.route('/bookings/cancel/<int:booking_id>')
 def cancel_booking(booking_id):
@@ -284,9 +310,40 @@ def register_guest():
 @app.route('/guests/<int:guest_id>/history')
 def guest_history(guest_id):
     conn = get_db_connection()
-    history = conn.execute('SELECT * FROM bookings WHERE guest_id = ?', (guest_id,)).fetchall()
+    history = conn.execute('''
+        SELECT bookings.start_date, bookings.end_date, bookings.status, rooms.type, rooms.price
+        FROM bookings
+        JOIN rooms ON bookings.room_id = rooms.id
+        WHERE bookings.guest_id = ?
+    ''', (guest_id,)).fetchall()
     conn.close()
-    return render_template('guest_history.html', history=history)
+    return render_template('guest_history.html', history=history, guest_id=guest_id)
+
+@app.route('/guests/<int:guest_id>', methods=['GET'])
+def guest_profile(guest_id):
+    conn = get_db_connection()
+    guest = conn.execute('SELECT * FROM guests WHERE id = ?', (guest_id,)).fetchone()
+    if guest is None:
+        flash("Гость не найден.", "danger")
+        conn.close()
+        return redirect(url_for('list_guests'))
+
+    bookings = conn.execute('''
+        SELECT rooms.type, bookings.start_date, bookings.end_date, bookings.status
+        FROM bookings
+        JOIN rooms ON bookings.room_id = rooms.id
+        WHERE bookings.guest_id = ?
+    ''', (guest_id,)).fetchall()
+    
+    reviews = conn.execute('''
+        SELECT reviews.review, reviews.rating, reviews.admin_reply
+        FROM reviews
+        WHERE reviews.guest_id = ?
+    ''', (guest_id,)).fetchall()
+    
+    conn.close()
+    return render_template('guest_profile.html', guest=guest, bookings=bookings, reviews=reviews)
+
 
 # ======================== 4. Отзывы ========================
 

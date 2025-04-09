@@ -1,29 +1,37 @@
+<!-- guest_history.html -->
 {% extends 'base.html' %}
 
-{% block title %}История бронирований{% endblock %}
+{% block title %}История посещений{% endblock %}
 
 {% block content %}
-<h2>История бронирований гостя</h2>
-<table class="table table-striped">
-  <thead>
-    <tr>
-      <th>ID бронирования</th>
-      <th>ID комнаты</th>
-      <th>Дата заезда</th>
-      <th>Дата выезда</th>
-      <th>Статус</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for booking in history %}
-    <tr>
-      <td>{{ booking['id'] }}</td>
-      <td>{{ booking['room_id'] }}</td>
-      <td>{{ booking['start_date'] }}</td>
-      <td>{{ booking['end_date'] }}</td>
-      <td>{{ booking['status'] }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<h2>История посещений гостя</h2>
+
+{% if history %}
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Категория номера</th>
+        <th>Дата заезда</th>
+        <th>Дата выезда</th>
+        <th>Цена</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in history %}
+      <tr>
+        <td>{{ entry['type'] }}</td>
+        <td>{{ entry['start_date'] }}</td>
+        <td>{{ entry['end_date'] }}</td>
+        <td>{{ entry['price'] }} руб.</td>
+        <td>{{ entry['status'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="text-muted">История посещений отсутствует.</p>
+{% endif %}
+
+<a href="{{ url_for('guest_profile', guest_id=guest_id) }}" class="btn btn-secondary">Назад к профилю</a>
 {% endblock %}
