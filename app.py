@@ -112,6 +112,18 @@ def init_db():
     # Индекс для ускорения поиска отзывов по гостям
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_guest_id_reviews ON reviews(guest_id)')
 
+    # Таблица рекомендаций (опциональная, для кеширования предложений)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS recommendations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guest_id INTEGER NOT NULL,         -- Связь с таблицей гостей
+            room_id INTEGER NOT NULL,          -- Рекомендуемый номер
+            reason TEXT,                       -- Причина рекомендации (например, "часто выбираемый номер")
+            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
+            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+        )
+    ''')
+
     
     # Таблица управления персоналом
     cursor.execute('''
@@ -262,40 +274,45 @@ def add_booking():
     conn = get_db_connection()
     
     if request.method == 'POST':
-        # Получаем данные из формы
         room_id = request.form['room_id']
-        guest_id = request.form.get('guest_id')  # предполагается, что ID гостя передаётся корректно
-        start_date = request.form['start_date']   # формат: YYYY-MM-DD
-        end_date = request.form['end_date']       # формат: YYYY-MM-DD
-
-        # Проверка пересечения дат бронирования для выбранной комнаты
+        guest_id = request.form['guest_id']
+        start_date = request.form['start_date']
+        end_date = request.form['end_date']
+        
+        # Проверка доступности номера
         conflict = conn.execute('''
             SELECT * FROM bookings
-            WHERE room_id = ?
-              AND status = 'active'
-              AND (? < end_date AND ? > start_date)
+            WHERE room_id = ? AND status = 'active'
+            AND (? < end_date AND ? > start_date)
         ''', (room_id, start_date, end_date)).fetchone()
 
         if conflict:
-            flash("На выбранные даты номер уже забронирован. Пожалуйста, выберите другие даты.", "danger")
+            flash("Выбранный номер занят. Попробуйте другой.", "danger")
             conn.close()
             return redirect(url_for('add_booking'))
         
-        # Если пересечений нет, создаём бронирование
+        # Добавление бронирования
         conn.execute('''
             INSERT INTO bookings (guest_id, room_id, start_date, end_date, status)
             VALUES (?, ?, ?, ?, 'active')
         ''', (guest_id, room_id, start_date, end_date))
         conn.commit()
         conn.close()
-        flash('Бронирование успешно создано!', 'success')
+        flash("Бронирование успешно создано!", "success")
         return redirect(url_for('list_bookings'))
     
-    # GET-запрос: выбираем список доступных комнат
-    rooms = conn.execute("SELECT * FROM rooms WHERE available = 1").fetchall()
-    conn.close()
-    return render_template('add_booking.html', rooms=rooms)
+    # Получение списка гостей
+    guests = conn.execute('SELECT * FROM guests').fetchall()
+    
+    # Получение списка доступных номеров
+    rooms = conn.execute('SELECT * FROM rooms WHERE available = 1').fetchall()
+    
+    # Генерация рекомендаций для гостя
+    guest_id = request.args.get('guest_id', type=int)
+    recommendations = get_recommendations(guest_id) if guest_id else []
 
+    conn.close()
+    return render_template('add_booking.html', guests=guests, rooms=rooms, recommendations=recommendations)
 
 
 @app.route('/bookings/cancel/<int:booking_id>')
@@ -453,26 +470,58 @@ def reply_review(review_id):
     return render_template('reply_review.html', review=review)
 
 
-# ======================== 5. Персонализированные рекомендации ========================
-
 @app.route('/recommendations/<int:guest_id>')
 def recommendations(guest_id):
     conn = get_db_connection()
-    # Простейшая логика: берем последнее бронирование гостя и рекомендуем номера такого же типа
-    booking = conn.execute('''
+    
+    # Анализ истории бронирований гостя
+    recent_bookings = conn.execute('''
         SELECT room_id FROM bookings
         WHERE guest_id = ?
-        ORDER BY id DESC LIMIT 1
-    ''', (guest_id,)).fetchone()
-    rec_rooms = []
-    if booking:
+        ORDER BY start_date DESC LIMIT 5
+    ''', (guest_id,)).fetchall()
+    
+    # Получение типов номеров из последних бронирований
+    favorite_types = []
+    for booking in recent_bookings:
         room = conn.execute('SELECT type FROM rooms WHERE id = ?', (booking['room_id'],)).fetchone()
-        if room:
-            rec_rooms = conn.execute('''
-                SELECT * FROM rooms WHERE type = ? AND available = 1
-            ''', (room['type'],)).fetchall()
+        if room and room['type'] not in favorite_types:
+            favorite_types.append(room['type'])
+    
+    # Анализ предпочтений гостя
+    guest_preferences = conn.execute('''
+        SELECT preferences FROM guests
+        WHERE id = ?
+    ''', (guest_id,)).fetchone()
+    guest_amenities = guest_preferences['preferences'] if guest_preferences else ''
+    
+    # Анализ отзывов гостя
+    positive_reviews = conn.execute('''
+        SELECT room_id FROM reviews
+        WHERE guest_id = ? AND rating >= 4
+    ''', (guest_id,)).fetchall()
+    positive_review_rooms = [review['room_id'] for review in positive_reviews]
+    
+    # Составление списка рекомендуемых номеров
+    query = '''
+        SELECT * FROM rooms
+        WHERE available = 1
+        AND (
+            type IN ({favorite_types}) OR
+            id IN ({positive_reviews}) OR
+            amenities LIKE ?
+        )
+    '''.format(
+        favorite_types=', '.join(['?' for _ in favorite_types]),
+        positive_reviews=', '.join(['?' for _ in positive_review_rooms])
+    )
+    
+    rec_rooms = conn.execute(query, (*favorite_types, *positive_review_rooms, f"%{guest_amenities}%")).fetchall()
+    
     conn.close()
     return render_template('recommendations.html', rec_rooms=rec_rooms)
+
+
 
 # ======================== 6. Управление персоналом ========================
 

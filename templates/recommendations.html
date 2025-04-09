@@ -1,18 +1,33 @@
 {% extends 'base.html' %}
 
-{% block title %}Персональные рекомендации{% endblock %}
+{% block title %}Рекомендации{% endblock %}
 
 {% block content %}
-<h2>Рекомендации для гостя</h2>
+<h2>Персонализированные рекомендации</h2>
 {% if rec_rooms %}
-  <ul class="list-group">
+<table class="table table-striped table-hover">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Категория</th>
+      <th>Вместимость</th>
+      <th>Цена</th>
+      <th>Удобства</th>
+    </tr>
+  </thead>
+  <tbody>
     {% for room in rec_rooms %}
-      <li class="list-group-item">
-        Комната ID: {{ room['id'] }} — Тип: {{ room['type'] }}, Цена: {{ room['price'] }}
-      </li>
+    <tr>
+      <td>{{ room['id'] }}</td>
+      <td>{{ room['type'] }}</td>
+      <td>{{ room['capacity'] }}</td>
+      <td>{{ room['price'] }} руб.</td>
+      <td>{{ room['amenities'] }}</td>
+    </tr>
     {% endfor %}
-  </ul>
+  </tbody>
+</table>
 {% else %}
-  <p>Нет рекомендаций на данный момент.</p>
+<p class="text-muted">Рекомендации отсутствуют.</p>
 {% endif %}
 {% endblock %}
