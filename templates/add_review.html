@@ -3,32 +3,25 @@
 {% block title %}Добавить отзыв{% endblock %}
 
 {% block content %}
-<h2>Добавить отзыв</h2>
+<h2>Добавление нового отзыва</h2>
 <form action="{{ url_for('add_review') }}" method="post">
   <div class="mb-3">
-    <label for="guest_id" class="form-label">Гость</label>
-    <select class="form-select" id="guest_id" name="guest_id" required>
+    <label for="guest_id" class="form-label">ID гостя</label>
+    <select name="guest_id" id="guest_id" class="form-select" required>
       {% for guest in guests %}
-        <option value="{{ guest['id'] }}">{{ guest['name'] }}</option>
-      {% else %}
-        <option disabled>Нет зарегистрированных гостей</option>
+      <option value="{{ guest['id'] }}">{{ guest['name'] }} (ID: {{ guest['id'] }})</option>
       {% endfor %}
     </select>
-    <small class="form-text text-muted">Выберите гостя, оставляющего отзыв.</small>
   </div>
   <div class="mb-3">
     <label for="review" class="form-label">Текст отзыва</label>
-    <textarea class="form-control" id="review" name="review" rows="3" placeholder="Напишите ваш отзыв здесь..." required></textarea>
-    <small class="form-text text-muted">Например: номер был чистый, уютный и тихий.</small>
+    <textarea class="form-control" id="review" name="review" rows="3" required></textarea>
   </div>
   <div class="mb-3">
-    <label for="rating" class="form-label">Оценка (1-5)</label>
+    <label for="rating" class="form-label">Оценка</label>
     <input type="number" class="form-control" id="rating" name="rating" min="1" max="5" required>
-    <small class="form-text text-muted">1 - плохо, 5 - отлично.</small>
   </div>
-  <div class="mt-3">
-    <button type="submit" class="btn btn-success">Сохранить отзыв</button>
-    <a href="{{ url_for('list_reviews') }}" class="btn btn-secondary">Отмена</a>
-  </div>
+  <button type="submit" class="btn btn-primary">Добавить</button>
+  <a href="{{ url_for('list_reviews') }}" class="btn btn-secondary">Отмена</a>
 </form>
 {% endblock %}

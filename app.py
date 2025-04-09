@@ -83,27 +83,35 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_id INTEGER,
-            review TEXT,
-            rating INTEGER,
-            admin_reply TEXT,
-            moderated INTEGER DEFAULT 0,
-            FOREIGN KEY (guest_id) REFERENCES guests(id)
+            guest_id INTEGER NOT NULL,    -- Связь с таблицей гостей
+            review TEXT,                  -- Текст отзыва
+            rating INTEGER CHECK (rating >= 1 AND rating <= 5),  -- Оценка от 1 до 5
+            admin_reply TEXT,             -- Ответ администратора
+            moderated INTEGER DEFAULT 0,  -- Флаг модерации (0 - не модерирован, 1 - модерирован)
+            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE
         )
     ''')
+
+    # Индексация для ускорения поиска по гостям
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_guest_id_reviews ON reviews(guest_id)')
+
     
     # Таблица отзывов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_id INTEGER,
-            review TEXT,               -- Текст отзыва
-            rating INTEGER,            -- Оценка гостя (например, от 1 до 5)
-            admin_reply TEXT,          -- Ответ администратора
-            moderated INTEGER DEFAULT 0,  -- Флаг модерации (0 - не модераторован, 1 - модераторован)
-            FOREIGN KEY (guest_id) REFERENCES guests(id)
+            guest_id INTEGER NOT NULL,   -- Связь с таблицей гостей
+            review TEXT,                 -- Текст отзыва
+            rating INTEGER CHECK (rating >= 1 AND rating <= 5),  -- Оценка от 1 до 5
+            admin_reply TEXT,            -- Ответ администратора
+            moderated INTEGER DEFAULT 0, -- Флаг модерации (0 - не модерирован, 1 - модерирован)
+            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE
         )
     ''')
+
+    # Индекс для ускорения поиска отзывов по гостям
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_guest_id_reviews ON reviews(guest_id)')
+
     
     # Таблица управления персоналом
     cursor.execute('''
@@ -367,10 +375,37 @@ def guest_profile(guest_id):
 
 @app.route('/reviews')
 def list_reviews():
+    # Получение параметров фильтрации и сортировки из запроса
+    moderated_only = request.args.get('moderated', default=None, type=int)  # Фильтрация по модерации: 0 или 1
+    guest_id = request.args.get('guest_id', default=None, type=int)         # Фильтрация по гостям
+    sort_by = request.args.get('sort_by', default='id', type=str)           # Сортировка: id, rating, или guest_id
+    sort_order = request.args.get('sort_order', default='asc', type=str)    # Порядок сортировки: asc или desc
+
     conn = get_db_connection()
-    reviews = conn.execute('SELECT * FROM reviews').fetchall()
+    query = 'SELECT * FROM reviews WHERE 1=1'  # Базовый SQL-запрос (WHERE 1=1 позволяет динамически добавлять фильтры)
+
+    # Добавление фильтрации по модерации
+    if moderated_only is not None:
+        query += ' AND moderated = ?'
+
+    # Добавление фильтрации по ID гостя
+    if guest_id is not None:
+        query += ' AND guest_id = ?'
+
+    # Добавление сортировки
+    query += f' ORDER BY {sort_by} {sort_order}'
+
+    # Сбор параметров для запроса
+    params = []
+    if moderated_only is not None:
+        params.append(moderated_only)
+    if guest_id is not None:
+        params.append(guest_id)
+
+    reviews = conn.execute(query, params).fetchall()
     conn.close()
     return render_template('reviews.html', reviews=reviews)
+
 
 @app.route('/reviews/add', methods=['GET', 'POST'])
 def add_review():
@@ -378,6 +413,12 @@ def add_review():
         guest_id = request.form['guest_id']
         review_text = request.form['review']
         rating = request.form['rating']
+        
+        # Проверка диапазона оценки (1-5)
+        if not 1 <= int(rating) <= 5:
+            flash('Оценка должна быть от 1 до 5.', 'danger')
+            return redirect(url_for('add_review'))
+        
         conn = get_db_connection()
         conn.execute('''
             INSERT INTO reviews (guest_id, review, rating)
@@ -387,6 +428,7 @@ def add_review():
         conn.close()
         flash('Отзыв добавлен!', 'success')
         return redirect(url_for('list_reviews'))
+    
     conn = get_db_connection()
     guests = conn.execute('SELECT * FROM guests').fetchall()
     conn.close()
@@ -394,9 +436,10 @@ def add_review():
 
 @app.route('/reviews/reply/<int:review_id>', methods=['GET', 'POST'])
 def reply_review(review_id):
+    conn = get_db_connection()
+    review = conn.execute('SELECT * FROM reviews WHERE id = ?', (review_id,)).fetchone()
     if request.method == 'POST':
         admin_reply = request.form['admin_reply']
-        conn = get_db_connection()
         conn.execute('''
             UPDATE reviews
             SET admin_reply = ?, moderated = 1
@@ -406,10 +449,9 @@ def reply_review(review_id):
         conn.close()
         flash('Ответ отправлен!', 'success')
         return redirect(url_for('list_reviews'))
-    conn = get_db_connection()
-    review = conn.execute('SELECT * FROM reviews WHERE id = ?', (review_id,)).fetchone()
     conn.close()
     return render_template('reply_review.html', review=review)
+
 
 # ======================== 5. Персонализированные рекомендации ========================
 
