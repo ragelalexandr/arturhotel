@@ -36,30 +36,48 @@ def init_db():
             available INTEGER DEFAULT 1 -- Значение 1 означает, что номер доступен, 0 – недоступен
         )
     ''')
+
+        # Добавление индекса для ускорения поиска по комнатам
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_room_id ON bookings(room_id)')
     
     # Таблица бронирований
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            guest_id INTEGER,          
-            room_id INTEGER,
-            start_date TEXT,            -- Дата заезда
-            end_date TEXT,              -- Дата выезда
-            status TEXT DEFAULT 'active',  -- Статус бронирования: active, cancelled, completed
-            FOREIGN KEY (room_id) REFERENCES rooms(id)
+            guest_id INTEGER NOT NULL,      -- Связь с таблицей гостей
+            room_id INTEGER NOT NULL,       -- Связь с таблицей комнат
+            start_date DATE NOT NULL,       -- Дата заезда (смена типа на DATE)
+            end_date DATE NOT NULL,         -- Дата выезда (смена типа на DATE)
+            status TEXT DEFAULT 'active',   -- Статус бронирования: active, cancelled, completed
+            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE, -- Укрепление связи с таблицей гостей
+            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL   -- Укрепление связи с таблицей комнат
         )
     ''')
-    
-    # Таблица учета гостей
+
+        # Таблица учета гостей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS guests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            contact TEXT,
-            preferences TEXT,            -- Личные пожелания гостя
-            history TEXT                 -- История посещений (например, JSON)
+            name TEXT NOT NULL,              -- Имя гостя (обязательно)
+            contact TEXT,                    -- Контактная информация
+            preferences TEXT,                -- Личные пожелания гостя
+            history TEXT                     -- История посещений (например, JSON)
         )
     ''')
+
+        # Таблица истории гостей (опционально, нормализация данных истории)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS guest_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guest_id INTEGER NOT NULL,       -- Связь с таблицей гостей
+            booking_id INTEGER NOT NULL,     -- Связь с таблицей бронирований
+            FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
+            FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+        )
+    ''')
+
+        # Добавление индекса для ускорения поиска по гостям
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_guest_id ON bookings(guest_id)')
 
     # Таблица отзывов (связь с гостями)
     cursor.execute('''

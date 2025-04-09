@@ -1,3 +1,4 @@
+<!-- bookings.html -->
 {% extends 'base.html' %}
 
 {% block title %}Бронирования{% endblock %}
@@ -7,7 +8,7 @@
   <h2>Список бронирований</h2>
   <a class="btn btn-success" href="{{ url_for('add_booking') }}">Создать бронирование</a>
 </div>
-<table class="table table-striped">
+<table class="table table-striped table-hover">
   <thead>
     <tr>
       <th>ID</th>
@@ -19,24 +20,32 @@
       <th>Действия</th>
     </tr>
   </thead>
-  <tbody>
-    {% for booking in bookings %}
-    <tr>
-      <td>{{ booking['id'] }}</td>
-      <td>{{ booking['guest_id'] }}</td>
-      <td>{{ booking['room_id'] }}</td>
-      <td>{{ booking['start_date'] }}</td>
-      <td>{{ booking['end_date'] }}</td>
-      <td>{{ booking['status'] }}</td>
-      <td>
-        {% if booking['status'] == 'active' %}
-          <a class="btn btn-danger btn-sm" href="{{ url_for('cancel_booking', booking_id=booking['id']) }}" onclick="return confirm('Отменить бронирование?');">Отменить</a>
-        {% else %}
-          &mdash;
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
+  {% if bookings %}
+    <tbody>
+      {% for booking in bookings %}
+      <tr>
+        <td>{{ booking['id'] }}</td>
+        <td>{{ booking['guest_id'] }}</td>
+        <td>{{ booking['room_id'] }}</td>
+        <td>{{ booking['start_date'] }}</td>
+        <td>{{ booking['end_date'] }}</td>
+        <td>{{ booking['status'] }}</td>
+        <td>
+          {% if booking['status'] == 'active' %}
+            <a class="btn btn-danger btn-sm" href="{{ url_for('cancel_booking', booking_id=booking['id']) }}" onclick="return confirm('Отменить бронирование?');">Отменить</a>
+          {% else %}
+            &mdash;
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  {% else %}
+    <tbody>
+      <tr>
+        <td colspan="7" class="text-center text-muted">Бронирования отсутствуют.</td>
+      </tr>
+    </tbody>
+  {% endif %}
 </table>
 {% endblock %}
