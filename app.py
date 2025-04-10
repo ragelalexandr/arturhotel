@@ -228,6 +228,35 @@ def delete_room(room_id):
 
 # ======================== 2. Бронирование ========================
 
+def get_recommendations(guest_id):
+    """
+    Генерирует рекомендации для гостя по его предпочтениям.
+    Здесь в качестве примера предполагается, что в таблице guests
+    может храниться предпочтительный тип номера (например, 'люкс', 'стандарт'),
+    по которому и будут искаться доступные комнаты.
+    """
+    conn = get_db_connection()
+    
+    # Получаем данные гостя по его идентификатору
+    guest = conn.execute('SELECT * FROM guests WHERE id = ?', (guest_id,)).fetchone()
+    
+    recommendations = []
+    if guest:
+        # Предположим, что в таблице guests есть столбец 'preferred_room_type'
+        preferred_room_type = guest.get('preferred_room_type')
+        if preferred_room_type:
+            # Ищем все доступные комнаты выбранного типа
+            rows = conn.execute('SELECT * FROM rooms WHERE type = ? AND available = 1', (preferred_room_type,)).fetchall()
+            # Преобразуем результат в список словарей
+            recommendations = [dict(row) for row in rows]
+        else:
+            # Если предпочтение не задано, можно вернуть, например, несколько наиболее доступных комнат
+            rows = conn.execute('SELECT * FROM rooms WHERE available = 1 LIMIT 5').fetchall()
+            recommendations = [dict(row) for row in rows]
+    conn.close()
+    return recommendations
+
+
 # Функция проверки доступности номера на указанный период
 def check_availability(room_id, start_date, end_date):
     conn = get_db_connection()
