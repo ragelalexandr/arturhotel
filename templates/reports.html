@@ -3,21 +3,92 @@
 {% block title %}Отчеты{% endblock %}
 
 {% block content %}
-<h2>Отчеты по бронированиям</h2>
-<table class="table table-striped">
-  <thead>
-    <tr>
-      <th>ID комнаты</th>
-      <th>Количество активных бронирований</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for stat in stats %}
-    <tr>
-      <td>{{ stat['room_id'] }}</td>
-      <td>{{ stat['count'] }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+
+
+
+<div class="container">
+
+  <!-- Отчет 1: Статистика по бронированиям -->
+  
+  <h3>Статистика по активным бронированиям</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID номера</th>
+        <th>Активные бронирования</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for stat in stats %}
+      <tr>
+        <td>{{ stat['room_id'] }}</td>
+        <td>{{ stat['active_bookings'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <canvas id="activeBookingsChart" width="400" height="200"></canvas>
+
+  <!-- Отчет 2: Анализ популярности номеров -->
+  <h3 class="mt-4">Анализ популярности номеров</h3>
+  <p>Этот отчет показывает номера, которые бронировались чаще всего.</p>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID номера</th>
+        <th>Количество бронирований</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for room in popular_rooms %}
+      <tr>
+        <td>{{ room['room_id'] }}</td>
+        <td>{{ room['total_bookings'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <canvas id="popularRoomsChart" width="400" height="200"></canvas>
+
+  <!-- Отчет 3: Загрузка номеров -->
+  <h3 class="mt-4">Отчет по загруженности номеров</h3>
+  <p>Этот отчет показывает доступные и недоступные номера, сгруппированные по типу.</p>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Тип номера</th>
+        <th>Доступные номера</th>
+        <th>Недоступные номера</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for load in room_load %}
+      <tr>
+        <td>{{ load['type'] }}</td>
+        <td>{{ load['available_rooms'] }}</td>
+        <td>{{ load['unavailable_rooms'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <canvas id="roomLoadChart" width="400" height="200"></canvas>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+      const statsData = JSON.parse('{{ stats | tojson | safe }}');
+      const popularRoomsData = JSON.parse('{{ popular_rooms | tojson | safe }}');
+      const roomLoadData = JSON.parse('{{ room_load | tojson | safe }}');
+
+      console.log('Parsed Stats Data:', statsData);
+      console.log('Parsed Popular Rooms Data:', popularRoomsData);
+      console.log('Parsed Room Load Data:', roomLoadData);
+
+      renderActiveBookingsChart(statsData);
+      renderPopularRoomsChart(popularRoomsData);
+      renderRoomLoadChart(roomLoadData);
+  });
+</script>
 {% endblock %}

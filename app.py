@@ -642,22 +642,50 @@ def complete_task(task_id):
 @app.route('/reports')
 def reports():
     conn = get_db_connection()
-    # Пример отчёта: количество активных бронирований по каждому номеру
-    stats = conn.execute('''
-        SELECT room_id, COUNT(*) as count
+    
+    # Статистика по бронированиям
+    stats_rows = conn.execute('''
+        SELECT room_id, COUNT(*) as active_bookings
         FROM bookings
         WHERE status = 'active'
         GROUP BY room_id
     ''').fetchall()
+    
+    # Анализ популярности номеров (самые бронируемые номера)
+    popular_rooms_rows = conn.execute('''
+        SELECT room_id, COUNT(*) as total_bookings
+        FROM bookings
+        GROUP BY room_id
+        ORDER BY total_bookings DESC
+        LIMIT 5
+    ''').fetchall()
+    
+    # Общая загрузка номеров (доступные и недоступные)
+    room_load_rows = conn.execute('''
+        SELECT type, 
+               SUM(CASE WHEN available = 1 THEN 1 ELSE 0 END) AS available_rooms,
+               SUM(CASE WHEN available = 0 THEN 1 ELSE 0 END) AS unavailable_rooms
+        FROM rooms
+        GROUP BY type
+    ''').fetchall()
+    
     conn.close()
-    return render_template('reports.html', stats=stats)
 
-# Главная страница
+    # Преобразуем объекты Row в словари, чтобы они были JSON-сериализуемыми
+    stats = [dict(row) for row in stats_rows]
+    popular_rooms = [dict(row) for row in popular_rooms_rows]
+    room_load = [dict(row) for row in room_load_rows]
+
+    return render_template('reports.html', stats=stats, popular_rooms=popular_rooms, room_load=room_load)
+
+
+
+# ========================  Главная страница  ========================
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Запуск приложения
+# ========================  Запуск приложения  ========================
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)

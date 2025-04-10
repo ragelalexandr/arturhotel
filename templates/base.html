@@ -10,8 +10,14 @@
   <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/animate.min.css') }}" /> -->
   <!-- Пользовательский CSS -->
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico.png') }}" type="image/png">
 </head>
 <body>
+
+  <!-- Скрипты для графиков -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+  
   <!-- Навигационная панель -->
   <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
     <div class="container">
@@ -94,5 +100,7 @@
 
   <!-- Подключаем локальный Bootstrap JS Bundle с Popper -->
   <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+  <!-- Другие подключаемые скрипты или контент -->
+  {% block scripts %}{% endblock %}
 </body>
 </html>
