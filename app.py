@@ -332,6 +332,43 @@ def cancel_booking(booking_id):
     flash('Бронирование отменено!', 'info')
     return redirect(url_for('list_bookings'))
 
+@app.route('/bookings/edit/<int:booking_id>', methods=['GET', 'POST'])
+def edit_booking(booking_id):
+    conn = get_db_connection()
+    # Получаем текущее бронирование по идентификатору
+    booking = conn.execute('SELECT * FROM bookings WHERE id = ?', (booking_id,)).fetchone()
+    if not booking:
+        flash('Бронирование не найдено', 'danger')
+        conn.close()
+        return redirect(url_for('list_bookings'))
+    
+    if request.method == 'POST':
+        # Извлекаем данные из формы
+        guest_id = request.form.get('guest_id')
+        room_id = request.form.get('room_id')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        
+        # Здесь можно добавить проверку доступности номера или другие проверки,
+        # например, аналогичную тому, что делается в add_booking.
+        # Для простоты обновим данные напрямую:
+        conn.execute('''
+            UPDATE bookings 
+            SET guest_id = ?, room_id = ?, start_date = ?, end_date = ?
+            WHERE id = ?
+        ''', (guest_id, room_id, start_date, end_date, booking_id))
+        conn.commit()
+        conn.close()
+        flash('Бронирование успешно обновлено!', 'success')
+        return redirect(url_for('list_bookings'))
+    
+    # Для формирования формы редактирования получим список гостей и доступных номеров.
+    # При этом, чтобы позволить выбрать ранее зарезервированный номер, включим его в выборку.
+    guests = conn.execute('SELECT * FROM guests').fetchall()
+    rooms = conn.execute('SELECT * FROM rooms WHERE available = 1 OR id = ?', (booking['room_id'],)).fetchall()
+    conn.close()
+    return render_template('edit_booking.html', booking=booking, guests=guests, rooms=rooms)
+
 # ======================== 3. Учет гостей ========================
 
 @app.route('/guests')
