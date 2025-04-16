@@ -313,9 +313,16 @@ def check_availability(room_id, start_date, end_date):
 @app.route('/bookings')
 def list_bookings():
     conn = get_db_connection()
-    bookings = conn.execute('SELECT * FROM bookings').fetchall()
+    # Объединяем таблицы bookings и guests
+    bookings = conn.execute('''
+        SELECT b.*, g.name AS guest_name
+        FROM bookings b
+        JOIN guests g ON b.guest_id = g.id
+    ''').fetchall()
     conn.close()
+    # Передаём список бронирований с именем гостя в шаблон
     return render_template('bookings.html', bookings=bookings)
+
 
 @app.route('/bookings/add', methods=['GET', 'POST'])
 def add_booking():

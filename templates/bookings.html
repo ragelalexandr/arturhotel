@@ -1,4 +1,3 @@
-<!-- bookings.html -->
 {% extends 'base.html' %}
 
 {% block title %}Бронирования{% endblock %}
@@ -12,7 +11,7 @@
   <thead>
     <tr>
       <th>ID</th>
-      <th>ID гостя</th>
+      <th>Гость</th> <!-- Изменён заголовок -->
       <th>ID комнаты</th>
       <th>Дата заезда</th>
       <th>Дата выезда</th>
@@ -25,7 +24,7 @@
       {% for booking in bookings %}
       <tr>
         <td>{{ booking['id'] }}</td>
-        <td>{{ booking['guest_id'] }}</td>
+        <td>{{ booking['guest_name'] }}</td> <!-- Вывод имени гостя -->
         <td>{{ booking['room_id'] }}</td>
         <td>{{ booking['start_date'] }}</td>
         <td>{{ booking['end_date'] }}</td>
