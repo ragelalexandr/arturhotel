@@ -2,7 +2,7 @@ import os
 import sqlite3
 
 from datetime import datetime
-from flask import Flask, request, render_template, redirect, url_for, flash
+from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
 
 
 app = Flask(__name__)
@@ -24,7 +24,7 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Таблица для управления номерами
+# Таблица для управления номерами
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS rooms (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,13 +51,14 @@ def init_db():
         )
     ''')
 
-    # Таблица гостей
+    # Таблица гостей (добавлено поле preferred_room_type)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS guests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,              -- Имя гостя
             contact TEXT,                    -- Контактная информация
             preferences TEXT,                -- Личные пожелания гостя
+            preferred_room_type TEXT,        -- Предпочтительный тип номера
             history TEXT                     -- История посещений (например, JSON)
         )
     ''')
@@ -75,7 +76,7 @@ def init_db():
         )
     ''')
 
-    # Таблица рекомендаций для гостей
+    # Таблица рекомендаций для гостей (не используется напрямую в get_recommendations)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS recommendations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -228,34 +229,75 @@ def delete_room(room_id):
 
 # ======================== 2. Бронирование ========================
 
+@app.route('/recommendations/<int:guest_id>')
+def recommendations_api(guest_id):
+    recommendations = get_recommendations(guest_id)
+    return jsonify(recommendations)
+
 def get_recommendations(guest_id):
     """
-    Генерирует рекомендации для гостя по его предпочтениям.
-    Здесь в качестве примера предполагается, что в таблице guests
-    может храниться предпочтительный тип номера (например, 'люкс', 'стандарт'),
-    по которому и будут искаться доступные комнаты.
+    Генерирует рекомендации для гостя по его предпочтениям и анализу отзывов.
+    
+    Логика:
+      - Если у гостя задан предпочтительный тип номера (preferred_room_type),
+        выбираем доступные комнаты этого типа.
+      - Если предпочтение не задано, пытаемся определить тип номера на основе истории бронирований.
+      - Получаем отзывы гостя и вычисляем средний рейтинг. Если средний рейтинг ниже порогового (например, 3),
+        предлагаем альтернативный тип номера.
+      - Если предпочтений (определённых или из истории) нет, выдаём набор (например, 5) комнат по умолчанию.
     """
     conn = get_db_connection()
     
-    # Получаем данные гостя по его идентификатору
     guest = conn.execute('SELECT * FROM guests WHERE id = ?', (guest_id,)).fetchone()
     
     recommendations = []
     if guest:
-        # Предположим, что в таблице guests есть столбец 'preferred_room_type'
-        preferred_room_type = guest.get('preferred_room_type')
-        if preferred_room_type:
-            # Ищем все доступные комнаты выбранного типа
-            rows = conn.execute('SELECT * FROM rooms WHERE type = ? AND available = 1', (preferred_room_type,)).fetchall()
-            # Преобразуем результат в список словарей
+        # Используем dict(guest) для доступа к полю
+        guest_dict = dict(guest)
+        preferred_room_type = guest_dict.get('preferred_room_type')
+        
+        # Если предпочтение не задано, пытаемся определить тип на основе истории бронирований
+        if not preferred_room_type:
+            history = conn.execute('''
+                SELECT r.type, COUNT(*) AS cnt
+                FROM bookings b
+                JOIN rooms r ON b.room_id = r.id
+                WHERE b.guest_id = ?
+                GROUP BY r.type
+                ORDER BY cnt DESC
+                LIMIT 1
+            ''', (guest_id,)).fetchone()
+            if history:
+                preferred_room_type = history['type']
+        
+        # Получаем отзывы гостя
+        reviews = conn.execute('SELECT * FROM reviews WHERE guest_id = ?', (guest_id,)).fetchall()
+        ratings = [review['rating'] for review in reviews if review['rating'] is not None]
+        
+        avg_rating = sum(ratings) / len(ratings) if ratings else None
+        
+        # Если отзывов нет или средний рейтинг >= 3, рекомендуем комнаты заданного (или определённого) типа
+        if preferred_room_type and (avg_rating is None or avg_rating >= 3):
+            rows = conn.execute('SELECT * FROM rooms WHERE type = ? AND available = 1',
+                                (preferred_room_type,)).fetchall()
+            recommendations = [dict(row) for row in rows]
+        # Если средний рейтинг ниже порога, предлагаем альтернативный тип
+        elif preferred_room_type and avg_rating is not None and avg_rating < 3:
+            alternative_type = 'Люкс' if preferred_room_type.lower() == 'стандарт' else 'Стандарт'
+            rows = conn.execute('SELECT * FROM rooms WHERE type = ? AND available = 1',
+                                (alternative_type,)).fetchall()
             recommendations = [dict(row) for row in rows]
         else:
-            # Если предпочтение не задано, можно вернуть, например, несколько наиболее доступных комнат
+            # Если предпочтения явно не заданы, выдаём 5 доступных комнат по умолчанию
             rows = conn.execute('SELECT * FROM rooms WHERE available = 1 LIMIT 5').fetchall()
             recommendations = [dict(row) for row in rows]
+    else:
+        # Если гость с таким ID не найден, возвращаем 5 доступных вариантов
+        rows = conn.execute('SELECT * FROM rooms WHERE available = 1 LIMIT 5').fetchall()
+        recommendations = [dict(row) for row in rows]
+    
     conn.close()
     return recommendations
-
 
 # Функция проверки доступности номера на указанный период
 def check_availability(room_id, start_date, end_date):
@@ -263,9 +305,7 @@ def check_availability(room_id, start_date, end_date):
     bookings = conn.execute('''
         SELECT * FROM bookings
         WHERE room_id = ? AND status = 'active'
-        AND NOT (
-            date(end_date) < date(?) OR date(start_date) > date(?)
-        )
+        AND NOT (date(end_date) < date(?) OR date(start_date) > date(?))
     ''', (room_id, start_date, end_date)).fetchall()
     conn.close()
     return len(bookings) == 0
@@ -280,7 +320,6 @@ def list_bookings():
 @app.route('/bookings/add', methods=['GET', 'POST'])
 def add_booking():
     conn = get_db_connection()
-    
     if request.method == 'POST':
         room_id = request.form['room_id']
         guest_id = request.form['guest_id']
@@ -293,7 +332,6 @@ def add_booking():
             WHERE room_id = ? AND status = 'active'
             AND (? < end_date AND ? > start_date)
         ''', (room_id, start_date, end_date)).fetchone()
-
         if conflict:
             flash("Выбранный номер занят. Попробуйте другой.", "danger")
             conn.close()
@@ -308,6 +346,30 @@ def add_booking():
         conn.close()
         flash("Бронирование успешно создано!", "success")
         return redirect(url_for('list_bookings'))
+    
+    # При GET-запросе получаем список гостей, доступных номеров и генерируем рекомендации (если guest_id передан в URL)
+    guests = conn.execute('SELECT * FROM guests').fetchall()
+    rooms = conn.execute('SELECT * FROM rooms WHERE available = 1').fetchall()
+    guest_id = request.args.get('guest_id', type=int)
+    if guest_id is None:
+        # Здесь можно указать гостя по умолчанию,
+        # например, если запись с id=1 существует, используем её
+        guest_id = 1
+    recommendations = get_recommendations(guest_id)
+
+    conn.close()
+    return render_template('add_booking.html', guests=guests, rooms=rooms, recommendations=recommendations)
+    
+    # Получение списка гостей и доступных номеров
+    guests = conn.execute('SELECT * FROM guests').fetchall()
+    rooms = conn.execute('SELECT * FROM rooms WHERE available = 1').fetchall()
+    
+    # Генерация рекомендаций по параметру guest_id (если передан в URL, например, ?guest_id=1)
+    guest_id = request.args.get('guest_id', type=int)
+    recommendations = get_recommendations(guest_id) if guest_id else []
+    
+    conn.close()
+    return render_template('add_booking.html', guests=guests, rooms=rooms, recommendations=recommendations)
     
     # Получение списка гостей
     guests = conn.execute('SELECT * FROM guests').fetchall()
@@ -335,7 +397,6 @@ def cancel_booking(booking_id):
 @app.route('/bookings/edit/<int:booking_id>', methods=['GET', 'POST'])
 def edit_booking(booking_id):
     conn = get_db_connection()
-    # Получаем текущее бронирование по идентификатору
     booking = conn.execute('SELECT * FROM bookings WHERE id = ?', (booking_id,)).fetchone()
     if not booking:
         flash('Бронирование не найдено', 'danger')
@@ -343,15 +404,10 @@ def edit_booking(booking_id):
         return redirect(url_for('list_bookings'))
     
     if request.method == 'POST':
-        # Извлекаем данные из формы
         guest_id = request.form.get('guest_id')
         room_id = request.form.get('room_id')
         start_date = request.form.get('start_date')
         end_date = request.form.get('end_date')
-        
-        # Здесь можно добавить проверку доступности номера или другие проверки,
-        # например, аналогичную тому, что делается в add_booking.
-        # Для простоты обновим данные напрямую:
         conn.execute('''
             UPDATE bookings 
             SET guest_id = ?, room_id = ?, start_date = ?, end_date = ?
@@ -362,12 +418,11 @@ def edit_booking(booking_id):
         flash('Бронирование успешно обновлено!', 'success')
         return redirect(url_for('list_bookings'))
     
-    # Для формирования формы редактирования получим список гостей и доступных номеров.
-    # При этом, чтобы позволить выбрать ранее зарезервированный номер, включим его в выборку.
     guests = conn.execute('SELECT * FROM guests').fetchall()
     rooms = conn.execute('SELECT * FROM rooms WHERE available = 1 OR id = ?', (booking['room_id'],)).fetchall()
     conn.close()
     return render_template('edit_booking.html', booking=booking, guests=guests, rooms=rooms)
+
 
 # ======================== 3. Учет гостей ========================
 

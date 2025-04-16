@@ -1,4 +1,3 @@
-<!-- add_booking.html -->
 {% extends 'base.html' %}
 
 {% block title %}Добавить бронирование{% endblock %}
@@ -10,6 +9,7 @@
   <div class="mb-3">
     <label for="guest_id" class="form-label">Гость</label>
     <select name="guest_id" id="guest_id" class="form-select" required>
+      <option value="">-- Выберите гостя --</option>
       {% for guest in guests %}
       <option value="{{ guest['id'] }}">{{ guest['name'] }} (ID: {{ guest['id'] }})</option>
       {% endfor %}
@@ -17,11 +17,11 @@
     <small class="form-text text-muted">Выберите гостя из списка.</small>
   </div>
   
-  <!-- Рекомендации для гостя -->
-  {% if recommendations %}
-  <div class="mb-3">
+  <!-- Контейнер для рекомендаций -->
+  <div id="recommendations-container" class="mb-3">
+    {% if recommendations %}
     <label class="form-label">Рекомендуемые номера:</label>
-    <ul class="list-group">
+    <ul class="list-group" id="recommendations-list">
       {% for room in recommendations %}
       <li class="list-group-item">
         <strong>{{ room['type'] }}</strong> (ID: {{ room['id'] }}, Цена: {{ room['price'] }} руб.)
@@ -30,10 +30,10 @@
       </li>
       {% endfor %}
     </ul>
+    {% else %}
+    <p class="text-muted" id="no-recommendations">Рекомендации для этого гостя отсутствуют.</p>
+    {% endif %}
   </div>
-  {% else %}
-  <p class="text-muted">Рекомендации для этого гостя отсутствуют.</p>
-  {% endif %}
   
   <!-- Выбор номера -->
   <div class="mb-3">
@@ -46,7 +46,7 @@
     <small class="form-text text-muted">Выберите номер, доступный для бронирования.</small>
   </div>
   
-  <!-- Даты -->
+  <!-- Даты бронирования -->
   <div class="mb-3">
     <label for="start_date" class="form-label">Дата заезда</label>
     <input type="date" name="start_date" id="start_date" class="form-control" required>
@@ -62,4 +62,37 @@
   <button type="submit" class="btn btn-primary">Забронировать</button>
   <a href="{{ url_for('list_bookings') }}" class="btn btn-secondary">Отмена</a>
 </form>
+
+<script>
+// Функция для обновления блока с рекомендациями
+document.getElementById("guest_id").addEventListener("change", function() {
+  let guestId = this.value;
+  // Если не выбран гость, очищаем блок рекомендаций
+  if (!guestId) {
+    document.getElementById("recommendations-container").innerHTML = "<p class='text-muted'>Рекомендации для этого гостя отсутствуют.</p>";
+    return;
+  }
+  
+  fetch("/recommendations/" + guestId)
+    .then(response => response.json())
+    .then(data => {
+      let container = document.getElementById("recommendations-container");
+      if (data.length > 0) {
+        let html = "<label class='form-label'>Рекомендуемые номера:</label><ul class='list-group' id='recommendations-list'>";
+        data.forEach(room => {
+          html += `<li class="list-group-item"><strong>${room.type}</strong> (ID: ${room.id}, Цена: ${room.price} руб.)
+                  <br>Удобства: ${room.amenities}</li>`;
+        });
+        html += "</ul>";
+        container.innerHTML = html;
+      } else {
+        container.innerHTML = "<p class='text-muted'>Рекомендации для этого гостя отсутствуют.</p>";
+      }
+    })
+    .catch(error => {
+      console.error("Ошибка получения рекомендаций:", error);
+      document.getElementById("recommendations-container").innerHTML = "<p class='text-muted'>Рекомендации для этого гостя отсутствуют.</p>";
+    });
+});
+</script>
 {% endblock %}
