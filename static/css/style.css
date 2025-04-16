@@ -70,6 +70,12 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 1.5rem !important;
 }
 
+.card-img-top {
+  height: 250px;
+  object-fit: cover;
+  width: 100%;
+}
+
 /* Мобильная оптимизация: небольшие корректировки для экранов меньше 576px */
 @media (max-width: 576px) {
   .navbar-brand {
@@ -82,3 +88,4 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0 15px;
   }
 }
+

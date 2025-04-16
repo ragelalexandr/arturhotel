@@ -1,0 +1,16 @@
+// ER Diagram
+digraph {
+	G [label=GUESTS]
+	B [label=BOOKINGS]
+	R [label=ROOMS]
+	RV [label=REVIEWS]
+	Rec [label=RECOMMENDATIONS]
+	S [label=STAFF]
+	T [label=TASK_REPORTS]
+	G -> B [label="размещает"]
+	R -> B [label="заказан в"]
+	G -> RV [label="оставляет"]
+	G -> Rec [label="получает"]
+	R -> Rec [label="рекомендуется для"]
+	S -> T [label="отчитывается по"]
+}

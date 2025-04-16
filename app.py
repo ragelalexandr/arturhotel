@@ -641,10 +641,23 @@ def manage_tasks():
         flash('Задача назначена!', 'success')
         return redirect(url_for('manage_tasks'))
     
-    tasks = conn.execute('SELECT * FROM task_reports').fetchall()
+    # Изменённый запрос с объединением для получения имени сотрудника:
+    tasks = conn.execute('''
+        SELECT task_reports.id,
+               staff.name AS staff_name,
+               task_reports.task,
+               task_reports.status,
+               task_reports.completed_at
+        FROM task_reports
+        LEFT JOIN staff ON task_reports.staff_id = staff.id
+        ORDER BY task_reports.id
+    ''').fetchall()
+    
+    # Если нужно, можно также получить список сотрудников для формы добавления задачи:
     staff = conn.execute('SELECT * FROM staff').fetchall()
     conn.close()
     return render_template('tasks.html', tasks=tasks, staff=staff)
+
 
 @app.route('/tasks/update/<int:task_id>', methods=['POST'])
 def update_task(task_id):
