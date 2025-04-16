@@ -21,16 +21,25 @@
     <label for="price" class="form-label">Цена</label>
     <input type="number" step="0.01" class="form-control" id="price" name="price" value="{{ room['price'] }}">
   </div>
+  
   <div class="mb-3">
     <label for="photo" class="form-label">Фото комнаты</label><br>
     {% if room['photo'] %}
-      <img src="{{ url_for('static', filename=room['photo']) }}" alt="Фото комнаты" style="max-width:200px;"><br>
+      <p>Текущее фото:</p>
+      <img src="{{ url_for('static', filename=room['photo']) }}" alt="Фото комнаты" style="width: 300px; height: 200px; object-fit: cover;"><br>
     {% else %}
       <p>Нет фото</p>
     {% endif %}
     <input type="file" class="form-control" id="photo" name="photo">
     <small class="form-text text-muted">Если выберете новое фото, оно заменит предыдущее.</small>
   </div>
+  
+  <!-- Предпросмотр нового фото -->
+  <div id="photo-preview" class="mb-3" style="display: none;">
+    <p>Предпросмотр нового фото:</p>
+    <img id="preview-img" src="" alt="Предпросмотр нового фото" style="width: 300px; height: 200px; object-fit: cover;">
+  </div>
+  
   <div class="mb-3 form-check">
     <input type="checkbox" class="form-check-input" id="available" name="available" {% if room['available'] %}checked{% endif %}>
     <label class="form-check-label" for="available">Доступна</label>
@@ -38,4 +47,23 @@
   <button type="submit" class="btn btn-primary">Сохранить изменения</button>
   <a href="{{ url_for('list_rooms') }}" class="btn btn-secondary">Отмена</a>
 </form>
+
+<script>
+document.getElementById('photo').addEventListener('change', function(event) {
+    var previewDiv = document.getElementById('photo-preview');
+    var previewImg = document.getElementById('preview-img');
+    var file = event.target.files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            previewDiv.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        previewImg.src = '';
+        previewDiv.style.display = 'none';
+    }
+});
+</script>
 {% endblock %}

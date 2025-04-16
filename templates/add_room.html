@@ -25,10 +25,35 @@
     <label for="photo" class="form-label">Фото комнаты</label>
     <input type="file" class="form-control" id="photo" name="photo">
   </div>
+  
+  <!-- Блок предпросмотра фото с фиксированными размерами -->
+  <div id="photo-preview" class="mb-3" style="display: none;">
+    <img id="preview-img" src="" alt="Предпросмотр фото" style="width: 300px; height: 200px; object-fit: cover;">
+  </div>
+  
   <div class="mb-3 form-check">
     <input type="checkbox" class="form-check-input" id="available" name="available" checked>
     <label class="form-check-label" for="available">Доступна</label>
   </div>
   <button type="submit" class="btn btn-success">Добавить комнату</button>
 </form>
+
+<script>
+document.getElementById('photo').addEventListener('change', function(event) {
+    var previewDiv = document.getElementById('photo-preview');
+    var previewImg = document.getElementById('preview-img');
+    var file = event.target.files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            previewDiv.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        previewImg.src = '';
+        previewDiv.style.display = 'none';
+    }
+});
+</script>
 {% endblock %}
