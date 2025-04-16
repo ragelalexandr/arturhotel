@@ -1,0 +1,27 @@
+@startuml
+left to right direction
+
+actor Администратор
+actor Сотрудник
+
+usecase "Добавить сотрудника" as UC_AddStaff
+usecase "Редактировать сотрудника" as UC_EditStaff
+usecase "Удалить сотрудника" as UC_DeleteStaff
+usecase "Назначить задачу сотруднику" as UC_AssignTask
+usecase "Просмотреть список задач" as UC_ViewTasks
+usecase "Отметить задачу как выполненную" as UC_CompleteTask
+usecase "Просмотреть отчеты" as UC_ViewReports
+usecase "Выполнить задачу" as UC_PerformTask
+
+Администратор --> UC_AddStaff
+Администратор --> UC_EditStaff
+Администратор --> UC_DeleteStaff
+Администратор --> UC_AssignTask
+Администратор --> UC_ViewTasks
+Администратор --> UC_CompleteTask
+Администратор --> UC_ViewReports
+
+Сотрудник --> UC_PerformTask
+Сотрудник --> UC_CompleteTask
+
+@enduml
